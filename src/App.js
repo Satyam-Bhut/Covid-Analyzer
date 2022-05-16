@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
+import {BrowserRouter as Router,Routes,Route} from 'react-router-dom'
+import {authentication} from './firebase'
+import {RecaptchaVerifier ,signInWithPhoneNumber } from "firebase/auth";
+import {useStateValue} from './StateProvider'
 import "./App.css";
+import "./login.css";
 import {
   MenuItem,
   FormControl,
@@ -24,6 +29,9 @@ const App = () => {
   const [casesType, setCasesType] = useState("cases");
   const [mapCenter, setMapCenter] = useState({ lat: 34.80746, lng: -40.4796 });
   const [mapZoom, setMapZoom] = useState(3);
+  const [mobile,setMobile] = useState("");
+  const [otp,setOtp] = useState();
+  const [usr,setUser] = useState(0);
 
   useEffect(() => {
     fetch("https://disease.sh/v3/covid-19/all")
@@ -71,9 +79,76 @@ const App = () => {
       });
   };
 
+const generateRecaptcha=()=>{
+    window.recaptchaVerifier = new RecaptchaVerifier('sign-in-button', {
+        'size': 'invisible',
+        'callback': (response) => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        }
+      }, authentication);
+}
+
+  const requestOTP = (e)=>{
+      e.preventDefault();
+      if(mobile)
+      {
+        generateRecaptcha();
+        let appVerifier = window.recaptchaVerifier;
+        signInWithPhoneNumber(authentication, mobile, appVerifier).then(confirmationResult=>{
+            window.confirmationResult = confirmationResult;
+        }).catch((error) => {
+            // Error; SMS not sent
+            console.log(error);
+            // ...
+        });
+      }
+  }
+
+  const verifyOTP =(e)=>{
+    let pass=otp;
+    e.preventDefault();
+    if(pass.length === 6)
+    {
+        let confirmationResult = window.confirmationResult;
+        confirmationResult.confirm(pass).then((result) => {
+            // User signed in successfully.
+           const user=result.user;
+           console.log(user);
+           setUser(user.uid);
+            console.log(usr);
+            // ...
+          }).catch((error) => {
+            // User couldn't sign in (bad verification code?)
+            // ...
+            console.log(error);
+          });
+    }
+  }
+
   return (
-    <div className="app">
-      <div className="app__left">
+      <div>
+   {!usr?(<div>
+        <Router>
+            <Routes>
+                <Route path="/" element={<div className="wrapper fadeInDown">
+                <h2 className="title">Login</h2>
+                    <div id='formContent'>
+                    <form onSubmit={requestOTP}>
+                        <div id="sign-in-button"></div>
+                        <input type="text" id="login" className="fadeIn second" name="number" placeholder="Mobile No." onChange={e=>setMobile(e.target.value)}/>
+                        <input type="submit" className="fadeIn fourth" value="Send OTP"/>
+                    </form>
+                    <form onSubmit={verifyOTP}>
+                    <input type="text" id="password" className="fadeIn third" name="otp" placeholder="OTP" onChange={e=>setOtp(e.target.value)}/>
+                    <input type="submit" className="fadeIn fourth" value="Verify"/>
+                    </form>
+                    </div>
+                </div>}/>
+            </Routes>
+        </Router>
+    </div>):(<div key={usr}><Router>
+            <Routes>
+                <Route path="/" element={<div className="app"><div className="app__left">
         <div className="app__header">
           <h1>COVID-19 Tracker</h1>
           <FormControl className="app__dropdown">
@@ -90,6 +165,10 @@ const App = () => {
           </FormControl>
         </div>
         <div className="app__stats">
+        
+        {/* <Router>
+         <Routes>
+         <Route path="/cases" element={ */}
           <InfoBox
             onClick={(e) => setCasesType("cases")}
             title="Coronavirus Cases"
@@ -98,6 +177,8 @@ const App = () => {
             cases={prettyPrintStat(countryInfo.todayCases)}
             total={numeral(countryInfo.cases).format("0.0a")}
           />
+          
+          {/* <Route path="/cases" element={ */}
           <InfoBox
             onClick={(e) => setCasesType("recovered")}
             title="Recovered"
@@ -105,6 +186,8 @@ const App = () => {
             cases={prettyPrintStat(countryInfo.todayRecovered)}
             total={numeral(countryInfo.recovered).format("0.0a")}
           />
+
+          {/* <Route path="/deaths" element={ */}
           <InfoBox
             onClick={(e) => setCasesType("deaths")}
             title="Deaths"
@@ -113,6 +196,8 @@ const App = () => {
             cases={prettyPrintStat(countryInfo.todayDeaths)}
             total={numeral(countryInfo.deaths).format("0.0a")}
           />
+          {/* </Routes>
+        </Router> */}
         </div>
         <Map
           countries={mapCountries}
@@ -130,8 +215,11 @@ const App = () => {
             <LineGraph casesType={casesType} />
           </div>
         </CardContent>
-      </Card>
-    </div>
+      </Card></div>}/>
+            </Routes>
+        </Router> </div>)}
+      </div>
+    
   );
 };
 

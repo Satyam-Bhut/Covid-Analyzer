@@ -6,6 +6,16 @@ body {
   background-color: #f5f6fa;
 }
 
+.title{
+    font-size: 3rem;
+    color: black;
+    font-weight: 700;
+    margin: 3rem 1rem 1rem 1rem;
+    padding-bottom: 1rem;
+    justify-content: center;
+    align-items: center;
+}
+
 .app {
   display: flex;
   justify-content: space-evenly;
